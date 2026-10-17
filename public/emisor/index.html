@@ -1,23 +1,550 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Emisor - WebRTC</title>
-  <link rel="stylesheet" href="/style.css" />
-</head>
-<body>
-  <nav><a href="/receptor">Ir al receptor →</a></nav>
-  <h1>Emisor (cámara y micrófono)</h1>
-  <video id="localVideo" autoplay muted playsinline></video>
-  <div class="controls">
-    <button id="startBtn">Iniciar transmisión</button>
-    <button id="stopBtn" disabled>Detener</button>
-  </div>
-  <div id="status">Presiona "Iniciar transmisión" para comenzar.</div>
+  <meta charset="UTF-8">
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#0e0e11"
+  >
+
+  <title>PULSE LIVE | Estudio del emisor</title>
+
+  <link rel="stylesheet" href="/style.css?v=2">
+  <link rel="stylesheet" href="/chat.css?v=1">
+  <link rel="stylesheet" href="/interacciones.css?v=1">
+</head>
+
+<body>
+  <a class="skip-link" href="#contenido">
+    Ir al contenido
+  </a>
+
+  <header class="topbar">
+    <a class="brand" href="/emisor" aria-label="PULSE LIVE">
+      <span class="brand-bars" aria-hidden="true">
+        <i></i><i></i><i></i>
+      </span>
+
+      <span class="brand-name">PULSE</span>
+      <span class="brand-live">LIVE</span>
+    </a>
+
+    <nav class="topnav" aria-label="Navegación principal">
+      <a href="/receptor">Canal</a>
+
+      <a href="/emisor" class="active" aria-current="page">
+        Estudio
+      </a>
+    </nav>
+
+    <div class="topbar-end">
+      <span class="topbar-note">TU ESPACIO. EN DIRECTO.</span>
+      <div class="user-avatar" aria-label="Tu espacio">TÚ</div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="Menú del canal">
+      <p class="sidebar-label">MI ESPACIO</p>
+
+      <nav class="side-nav">
+        <a class="side-link" href="/receptor">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect x="3" y="4" width="18" height="13" rx="3"/>
+            <path d="M8 21h8M12 17v4"/>
+          </svg>
+
+          Mi canal
+        </a>
+
+        <a
+          class="side-link active"
+          href="/emisor"
+          aria-current="page"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect x="3" y="5" width="13" height="14" rx="3"/>
+            <path d="m16 10 5-3v10l-5-3"/>
+          </svg>
+
+          Estudio de creador
+        </a>
+
+        <a class="side-link" href="#guia">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect x="5" y="3" width="14" height="18" rx="2"/>
+            <path d="M9 8h6M9 12h6M9 16h4"/>
+          </svg>
+
+          Guía rápida
+        </a>
+      </nav>
+
+      <div class="sidebar-card">
+        <span class="eyebrow">UN SOLO DIRECTO</span>
+
+        <h3>Conecta con<br>tu gente.</h3>
+
+        <p>
+          Un emisor. Hasta cuatro espectadores.
+          El mismo momento.
+        </p>
+
+        <a href="/receptor" target="_blank" rel="noopener">
+          Abrir canal ↗
+        </a>
+      </div>
+    </aside>
+
+    <main class="content" id="contenido">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">ESTUDIO DE TRANSMISIÓN</span>
+
+          <h1>Tu próximo <span>gran directo.</span></h1>
+
+          <p>
+            Enciende la cámara. Comparte el momento.
+          </p>
+        </div>
+
+        <div class="live-badge" id="liveBadge">
+          <i aria-hidden="true"></i>
+          <span id="liveLabel">FUERA DE LÍNEA</span>
+        </div>
+      </div>
+
+      <div class="main-grid">
+        <section class="stream-column" aria-label="Tu transmisión">
+          <div class="player" id="player">
+            <span class="player-tag">VISTA PREVIA</span>
+
+            <video
+              id="localVideo"
+              autoplay
+              playsinline
+              muted
+              aria-label="Vista previa de tu cámara"
+            ></video>
+
+            <div class="player-placeholder">
+              <div class="signal-box" aria-hidden="true">
+                <div class="signal-bars">
+                  <i></i><i></i><i></i>
+                </div>
+              </div>
+
+              <h2>Tu escenario está listo.</h2>
+
+              <p>
+                Inicia la transmisión para compartir
+                tu cámara y tu micrófono.
+              </p>
+
+              <span class="placeholder-caption">
+                TU VOZ. TU CÁMARA. TU COMUNIDAD.
+              </span>
+            </div>
+          </div>
+
+          <div class="channel-row">
+            <div class="channel-avatar" aria-hidden="true">P</div>
+
+            <div class="channel-info">
+              <h2>Mi canal</h2>
+              <p>Audio y video en directo</p>
+
+              <div class="tags">
+                <span class="tag">En español</span>
+                <span class="tag">Comunidad</span>
+              </div>
+            </div>
+
+            <button
+              class="button button-secondary share-button"
+              id="shareBtn"
+              type="button"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path d="M12 16V3m-5 5 5-5 5 5"/>
+                <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+              </svg>
+
+              Compartir canal
+            </button>
+          </div>
+
+          <section class="panel guide" id="guia">
+            <span class="eyebrow">DALE PLAY A TU COMUNIDAD</span>
+
+            <h2>Todo listo en tres pasos.</h2>
+
+            <ol class="steps">
+              <li>
+                <span class="step-number">01</span>
+                <h3>Enciende tu cámara</h3>
+
+                <p>
+                  Inicia la transmisión y permite el acceso
+                  a la cámara y al micrófono.
+                </p>
+              </li>
+
+              <li>
+                <span class="step-number">02</span>
+                <h3>Comparte tu canal</h3>
+
+                <p>
+                  Envía el enlace a las personas
+                  que verán tu directo.
+                </p>
+              </li>
+
+              <li>
+                <span class="step-number">03</span>
+                <h3>Disfruta el momento</h3>
+
+                <p>
+                  Hasta cuatro receptores pueden
+                  conectarse al mismo tiempo.
+                </p>
+              </li>
+            </ol>
+          </section>
+        </section>
+
+        <aside class="right-column" aria-label="Control de transmisión">
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Control del directo</h2>
+              <span class="purple-mark" aria-hidden="true">◉</span>
+            </div>
+
+            <p class="panel-description">
+              Todo comienza contigo.
+              Prepara tu cámara y sal en vivo.
+            </p>
+
+            <div class="session-time">
+              <span>Tiempo en vivo</span>
+              <strong id="liveClock">00:00:00</strong>
+            </div>
+
+            <div class="controls">
+              <button
+                id="startBtn"
+                class="button button-primary"
+                type="button"
+              >
+                <span aria-hidden="true">▶</span>
+                Iniciar transmisión
+              </button>
+
+              <button
+                id="stopBtn"
+                class="button button-secondary button-stop"
+                type="button"
+                disabled
+              >
+                <span aria-hidden="true">■</span>
+                Detener transmisión
+              </button>
+            </div>
+
+            <div class="status-box">
+              <span class="status-label">ESTADO DE TRANSMISIÓN</span>
+
+              <p id="status" role="status" aria-live="polite">
+                Transmisión no iniciada.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Tu audiencia</h2>
+
+              <strong
+                class="audience-count"
+                id="audienceCount"
+                aria-label="Receptores conectados"
+              >
+                0/4
+              </strong>
+            </div>
+
+            <p class="audience-summary" id="audienceSummary">
+              Nadie conectado todavía.
+            </p>
+
+            <ul class="viewer-slots">
+              <li class="viewer-slot" data-state="free">
+                <span class="slot-avatar">01</span>
+
+                <div class="slot-info">
+                  <strong>Lugar 01</strong>
+                  <small>Disponible</small>
+                </div>
+
+                <i class="slot-dot" aria-hidden="true"></i>
+              </li>
+
+              <li class="viewer-slot" data-state="free">
+                <span class="slot-avatar">02</span>
+
+                <div class="slot-info">
+                  <strong>Lugar 02</strong>
+                  <small>Disponible</small>
+                </div>
+
+                <i class="slot-dot" aria-hidden="true"></i>
+              </li>
+
+              <li class="viewer-slot" data-state="free">
+                <span class="slot-avatar">03</span>
+
+                <div class="slot-info">
+                  <strong>Lugar 03</strong>
+                  <small>Disponible</small>
+                </div>
+
+                <i class="slot-dot" aria-hidden="true"></i>
+              </li>
+
+              <li class="viewer-slot" data-state="free">
+                <span class="slot-avatar">04</span>
+
+                <div class="slot-info">
+                  <strong>Lugar 04</strong>
+                  <small>Disponible</small>
+                </div>
+
+                <i class="slot-dot" aria-hidden="true"></i>
+              </li>
+            </ul>
+
+            <p class="panel-footnote">
+              Cuando alguien sale, su lugar queda disponible
+              para otro receptor.
+            </p>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="page-footer">
+        <strong>PULSE LIVE</strong>
+        <span>Pequeñas audiencias. Grandes momentos.</span>
+      </footer>
+    </main>
+  </div>
+
+  <div
+    class="toast"
+    id="shareNotice"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    Enlace del canal copiado.
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <script src="/firebase-config.js"></script>
   <script src="/emisor/emisor.js"></script>
+  <script src="/chat.js?v=1" data-role="emisor"></script>
+  <script src="/reacciones.js?v=1" data-role="emisor"></script>
+  <script src="/pantalla.js?v=2"></script>
+
+  <script>
+    (() => {
+      const playerElement = document.getElementById('player');
+      const videoElement = document.getElementById('localVideo');
+      const startButton = document.getElementById('startBtn');
+      const stopButton = document.getElementById('stopBtn');
+      const badgeElement = document.getElementById('liveBadge');
+      const labelElement = document.getElementById('liveLabel');
+      const clockElement = document.getElementById('liveClock');
+      const countElement = document.getElementById('audienceCount');
+      const summaryElement = document.getElementById('audienceSummary');
+      const slots = document.querySelectorAll('.viewer-slot');
+
+      let startedAt = null;
+      let noticeTimer = null;
+
+      function formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
+
+        return [hours, minutes, remainingSeconds]
+          .map(value => String(value).padStart(2, '0'))
+          .join(':');
+      }
+
+      function updateInterface() {
+        const stream = videoElement.srcObject;
+
+        const hasVideo = Boolean(
+          stream &&
+          stream.getVideoTracks().some(
+            track => track.readyState === 'live'
+          )
+        );
+
+        const broadcasting = Boolean(
+          typeof localStream !== 'undefined' &&
+          localStream &&
+          !stopButton.disabled
+        );
+
+        playerElement.classList.toggle('has-video', hasVideo);
+        badgeElement.classList.toggle('is-live', broadcasting);
+
+        labelElement.textContent = broadcasting
+          ? 'EN VIVO'
+          : startButton.disabled
+            ? 'PREPARANDO'
+            : 'FUERA DE LÍNEA';
+
+        if (broadcasting && startedAt === null) {
+          startedAt = Date.now();
+        }
+
+        if (!broadcasting) {
+          startedAt = null;
+        }
+
+        const seconds = startedAt === null
+          ? 0
+          : Math.floor((Date.now() - startedAt) / 1000);
+
+        clockElement.textContent = formatTime(seconds);
+
+        // Lee las conexiones reales creadas por emisor.js.
+        const connections = typeof peerConnections !== 'undefined'
+          ? Array.from(peerConnections.values())
+          : [];
+
+        const connectedCount = connections.filter(
+          connection => connection.pc.connectionState === 'connected'
+        ).length;
+
+        countElement.textContent = `${connectedCount}/4`;
+
+        summaryElement.textContent = connections.length === 0
+          ? 'Nadie conectado todavía.'
+          : `${connections.length} de 4 lugares ocupados.`;
+
+        const stateLabels = {
+          new: 'Preparando conexión',
+          connecting: 'Conectando...',
+          connected: 'Recibiendo transmisión',
+          disconnected: 'Conexión interrumpida',
+          failed: 'Conexión fallida',
+          closed: 'Desconectado'
+        };
+
+        slots.forEach((slot, index) => {
+          const connection = connections[index];
+          const description = slot.querySelector('small');
+
+          if (!connection) {
+            slot.dataset.state = 'free';
+            description.textContent = 'Disponible';
+            return;
+          }
+
+          const state = connection.pc.connectionState;
+
+          slot.dataset.state = state === 'connected'
+            ? 'connected'
+            : 'pending';
+
+          description.textContent = stateLabels[state] || 'Conectando...';
+        });
+      }
+
+      const observer = new MutationObserver(updateInterface);
+
+      observer.observe(document.getElementById('status'), {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+
+      observer.observe(startButton, {
+        attributes: true,
+        attributeFilter: ['disabled']
+      });
+
+      observer.observe(stopButton, {
+        attributes: true,
+        attributeFilter: ['disabled']
+      });
+
+      videoElement.addEventListener('loadedmetadata', updateInterface);
+      videoElement.addEventListener('emptied', updateInterface);
+
+      document.getElementById('shareBtn').addEventListener(
+        'click',
+        async () => {
+          const channelUrl = new URL(
+            '/receptor',
+            window.location.origin
+          ).href;
+
+          try {
+            await navigator.clipboard.writeText(channelUrl);
+
+            const notice = document.getElementById('shareNotice');
+            notice.hidden = false;
+
+            clearTimeout(noticeTimer);
+
+            noticeTimer = setTimeout(() => {
+              notice.hidden = true;
+            }, 3000);
+          } catch {
+            window.prompt('Copia el enlace de tu canal:', channelUrl);
+          }
+        }
+      );
+
+      updateInterface();
+      setInterval(updateInterface, 1000);
+    })();
+  </script>
 </body>
 </html>

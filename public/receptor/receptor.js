@@ -1,89 +1,268 @@
-// Lado "receptor": se conecta a la sala de Firebase y reproduce el stream remoto del emisor.
 const remoteVideo = document.getElementById('remoteVideo');
 const connectBtn = document.getElementById('connectBtn');
-const disconnectBtn = document.getElementById('disconnectBtn');
+const disconnectBtn = document.getElementById(
+  'disconnectBtn'
+);
 const statusEl = document.getElementById('status');
 
-let pc = null; // RTCPeerConnection activa
-let roomRef = null; // Referencia a Firebase para la señalización (rooms/main)
-let offerListenerRef = null; // Listener de la oferta (offer) publicada por el emisor
-let callerCandidatesRef = null; // Listener de los ICE candidates del emisor
+let pc = null;
+let roomRef = null;
+let viewerRef = null;
+
+let offerRef = null;
+let rejectedRef = null;
+let errorRef = null;
+let callerCandidatesRef = null;
+
+let pendingCandidates = [];
+let disconnecting = false;
 
 function setStatus(text) {
   statusEl.textContent = text;
 }
 
 async function connect() {
+  if (pc || viewerRef) return;
+
   connectBtn.disabled = true;
-  setStatus('Buscando emisor activo...');
+  disconnecting = false;
 
-  roomRef = db.ref(ROOM_PATH);
+  setStatus('Buscando un emisor activo...');
 
-  pc = new RTCPeerConnection(RTC_CONFIG);
+  try {
+    roomRef = db.ref(ROOM_PATH);
 
-  // Al llegar el stream remoto, lo asigna al elemento de video.
-  pc.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
-    setStatus('Recibiendo transmisión.');
-  };
+    const activeSnapshot = await roomRef
+      .child('active')
+      .once('value');
 
-  pc.onconnectionstatechange = () => {
-    setStatus('Estado de conexión: ' + pc.connectionState);
-  };
-
-  // Cada ICE candidate propio se publica en Firebase para que el emisor lo use.
-  const calleeCandidatesRef = roomRef.child('calleeCandidates');
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      calleeCandidatesRef.push(event.candidate.toJSON());
+    if (!activeSnapshot.val()) {
+      setStatus('No hay ningún emisor activo.');
+      connectBtn.disabled = false;
+      return;
     }
-  };
 
-  // Espera la oferta del emisor, genera la respuesta (answer) y la publica.
-  offerListenerRef = roomRef.child('offer');
-  offerListenerRef.on('value', async (snapshot) => {
-    const offer = snapshot.val();
-    if (offer && pc && !pc.currentRemoteDescription) {
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    pc = new RTCPeerConnection(RTC_CONFIG);
 
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await roomRef.child('answer').set({ type: answer.type, sdp: answer.sdp });
+    // push() genera un identificador único para este receptor.
+    viewerRef = roomRef.child('viewers').push();
 
-      setStatus('Respuesta enviada. Conectando con el emisor...');
-    }
-  });
+    offerRef = viewerRef.child('offer');
+    rejectedRef = viewerRef.child('rejected');
+    errorRef = viewerRef.child('error');
 
-  // Escucha los ICE candidates que publica el emisor y los agrega a la conexión.
-  callerCandidatesRef = roomRef.child('callerCandidates');
-  callerCandidatesRef.on('child_added', (snapshot) => {
-    const candidate = snapshot.val();
-    if (candidate && pc) {
-      pc.addIceCandidate(new RTCIceCandidate(candidate));
-    }
-  });
+    callerCandidatesRef = viewerRef.child(
+      'callerCandidates'
+    );
 
-  disconnectBtn.disabled = false;
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+      }
+
+      setStatus('Recibiendo transmisión.');
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (!pc || disconnecting) return;
+
+      const state = pc.connectionState;
+      setStatus(`Estado de conexión: ${state}`);
+
+      if (state === 'failed') {
+        disconnect(
+          'La conexión falló. Intenta conectarte nuevamente.'
+        );
+      }
+    };
+
+    // Publica los candidatos propios de este receptor.
+    pc.onicecandidate = async (event) => {
+      if (!event.candidate || !viewerRef) return;
+
+      try {
+        await viewerRef
+          .child('calleeCandidates')
+          .push(event.candidate.toJSON());
+      } catch (error) {
+        console.error(
+          'Error enviando candidato del receptor:',
+          error
+        );
+      }
+    };
+
+    // Detecta si ya están ocupados los cuatro lugares.
+    rejectedRef.on('value', async (snapshot) => {
+      const rejection = snapshot.val();
+
+      if (!rejection) return;
+
+      await disconnect(
+        rejection.reason ||
+        'No se permitió la conexión.'
+      );
+    });
+
+    errorRef.on('value', async (snapshot) => {
+      const connectionError = snapshot.val();
+
+      if (!connectionError) return;
+
+      await disconnect(
+        connectionError.message ||
+        'Ocurrió un error al crear la conexión.'
+      );
+    });
+
+    // Recibe los candidatos ICE exclusivos para este receptor.
+    callerCandidatesRef.on(
+      'child_added',
+      async (snapshot) => {
+        if (!pc || pc.signalingState === 'closed') return;
+
+        const data = snapshot.val();
+
+        if (!data) return;
+
+        const candidate = new RTCIceCandidate(data);
+
+        try {
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(candidate);
+          } else {
+            pendingCandidates.push(candidate);
+          }
+        } catch (error) {
+          console.error(
+            'Error agregando candidato del emisor:',
+            error
+          );
+        }
+      }
+    );
+
+    // Espera la oferta exclusiva creada para este receptor.
+    offerRef.on('value', async (snapshot) => {
+      const offer = snapshot.val();
+
+      if (
+        !offer ||
+        !pc ||
+        pc.signalingState === 'closed' ||
+        pc.currentRemoteDescription
+      ) {
+        return;
+      }
+
+      try {
+        await pc.setRemoteDescription(
+          new RTCSessionDescription(offer)
+        );
+
+        // Agrega candidatos que llegaron antes de la oferta.
+        for (const candidate of pendingCandidates) {
+          await pc.addIceCandidate(candidate);
+        }
+
+        pendingCandidates = [];
+
+        const answer = await pc.createAnswer();
+
+        await pc.setLocalDescription(answer);
+
+        await viewerRef.child('answer').set({
+          type: answer.type,
+          sdp: answer.sdp
+        });
+
+        setStatus('Respuesta enviada. Conectando...');
+      } catch (error) {
+        console.error(error);
+
+        await disconnect(
+          'No se pudo establecer la conexión: ' +
+          error.message
+        );
+      }
+    });
+
+    // Elimina este receptor si pierde conexión con Firebase.
+    await viewerRef.onDisconnect().remove();
+
+    // Al crear este dato, el emisor detectará al receptor.
+    await viewerRef.child('joinedAt').set(
+      firebase.database.ServerValue.TIMESTAMP
+    );
+
+    if (!viewerRef || disconnecting) return;
+
+    setStatus('Esperando respuesta del emisor...');
+    disconnectBtn.disabled = false;
+  } catch (error) {
+    console.error(error);
+
+    await disconnect(
+      'Error al conectarse: ' + error.message
+    );
+  }
 }
 
-function disconnect() {
+async function disconnect(finalMessage = 'Desconectado.') {
+  if (disconnecting) return;
+
+  disconnecting = true;
   disconnectBtn.disabled = true;
 
-  // Deja de escuchar cambios en Firebase antes de limpiar el estado.
-  if (offerListenerRef) offerListenerRef.off();
+  if (offerRef) offerRef.off();
+  if (rejectedRef) rejectedRef.off();
+  if (errorRef) errorRef.off();
   if (callerCandidatesRef) callerCandidatesRef.off();
 
+  offerRef = null;
+  rejectedRef = null;
+  errorRef = null;
+  callerCandidatesRef = null;
+
   if (pc) {
-    pc.close();
+    pc.ontrack = null;
+    pc.onicecandidate = null;
+    pc.onconnectionstatechange = null;
+
+    if (pc.signalingState !== 'closed') {
+      pc.close();
+    }
+
     pc = null;
   }
 
   remoteVideo.srcObject = null;
+  pendingCandidates = [];
+
+  if (viewerRef) {
+    const currentViewerRef = viewerRef;
+    viewerRef = null;
+
+    try {
+      await currentViewerRef.onDisconnect().cancel();
+      await currentViewerRef.remove();
+    } catch (error) {
+      console.error(
+        'Error eliminando el receptor:',
+        error
+      );
+    }
+  }
+
   roomRef = null;
 
-  setStatus('Desconectado.');
+  setStatus(finalMessage);
   connectBtn.disabled = false;
+  disconnecting = false;
 }
 
 connectBtn.addEventListener('click', connect);
-disconnectBtn.addEventListener('click', disconnect);
+
+disconnectBtn.addEventListener('click', () => {
+  disconnect();
+});

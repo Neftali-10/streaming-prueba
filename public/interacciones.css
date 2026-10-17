@@ -1,0 +1,39 @@
+.screen-tools{display:grid;gap:8px;margin-top:14px}
+.screen-tools .button{width:100%;white-space:normal}
+.extra-hint{margin:0;color:var(--muted,#999fa8);font-size:.8rem;line-height:1.5}
+
+.reaction-bar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px;padding:14px 16px;border:1px solid var(--border,#30343a);border-radius:12px;background:var(--surface,#1a1c1f);color:var(--text,#f0f1f3)}
+.reaction-bar>strong{font-size:.85rem}
+.reaction-bar>.extra-hint{flex-basis:100%}
+.reaction-buttons{display:flex;flex-wrap:wrap;gap:8px}
+.reaction-buttons[hidden]{display:none}
+.reaction-button{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--border,#30343a);border-radius:10px;background:var(--raised,#24272c);font-size:1.45rem;cursor:pointer;transition:background .15s,transform .15s}
+.reaction-button:hover:not(:disabled){background:#373b42;transform:translateY(-2px)}
+.reaction-button:active:not(:disabled){transform:scale(.92)}
+.reaction-button:focus-visible{outline:2px solid #e0e3e7;outline-offset:3px}
+.reaction-button:disabled{opacity:.4;cursor:not-allowed}
+
+#player{position:relative}
+.reaction-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5}
+.reaction-bubble{position:absolute;bottom:55px;display:flex;flex-direction:column;align-items:center;gap:5px;max-width:135px;animation:reaction-rise 3.2s ease-out forwards}
+.reaction-bubble>span{font-size:2.8rem;filter:drop-shadow(0 3px 8px #0008)}
+.reaction-bubble>small{max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-radius:20px;background:#111e;color:#fff;font:12px/1.4 "Segoe UI",sans-serif}
+
+@keyframes reaction-rise{
+  0%{opacity:0;transform:translateY(15px) scale(.7)}
+  15%{opacity:1;transform:translateY(0) scale(1)}
+  75%{opacity:1}
+  100%{opacity:0;transform:translateY(-150px) scale(1.1)}
+}
+
+@media(max-width:760px){
+  .reaction-bar{padding:12px}
+  .reaction-buttons{gap:6px}
+  .reaction-bubble>span{font-size:2.2rem}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .reaction-bubble{animation:none}
+  .reaction-button{transition:none}
+  .reaction-button:hover:not(:disabled),.reaction-button:active:not(:disabled){transform:none}
+}

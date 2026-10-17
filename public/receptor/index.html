@@ -1,23 +1,659 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Receptor - WebRTC</title>
-  <link rel="stylesheet" href="/style.css" />
-</head>
-<body>
-  <nav><a href="/emisor">Ir al emisor →</a></nav>
-  <h1>Receptor (ver transmisión)</h1>
-  <video id="remoteVideo" autoplay playsinline></video>
-  <div class="controls">
-    <button id="connectBtn">Conectar</button>
-    <button id="disconnectBtn" disabled>Desconectar</button>
-  </div>
-  <div id="status">Presiona "Conectar" para ver la transmisión del emisor.</div>
+  <meta charset="UTF-8">
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta name="theme-color" content="#0e0e11">
+
+  <title>PULSE LIVE | Ver transmisión</title>
+
+  <link rel="stylesheet" href="/style.css?v=2">
+  <link rel="stylesheet" href="/chat.css?v=1">
+  <link rel="stylesheet" href="/interacciones.css?v=1">
+</head>
+
+<body>
+  <a class="skip-link" href="#contenido">
+    Ir al contenido
+  </a>
+
+  <!-- ENCABEZADO DEL RECEPTOR -->
+  <header class="topbar">
+    <a class="brand" href="/receptor" aria-label="PULSE LIVE">
+      <span class="brand-bars" aria-hidden="true">
+        <i></i>
+        <i></i>
+        <i></i>
+      </span>
+
+      <span class="brand-name">PULSE</span>
+      <span class="brand-live">LIVE</span>
+    </a>
+
+    <nav class="topnav" aria-label="Navegación principal">
+      <a
+        href="/receptor"
+        class="active"
+        aria-current="page"
+      >
+        Ver directo
+      </a>
+    </nav>
+
+    <div class="topbar-end">
+      <span class="topbar-note">
+        DISFRUTA EL MOMENTO.
+      </span>
+
+      <div class="user-avatar" aria-label="Espectador">
+        ES
+      </div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- MENÚ EXCLUSIVO PARA ESPECTADORES -->
+    <aside class="sidebar" aria-label="Menú del espectador">
+      <p class="sidebar-label">ESPECTADOR</p>
+
+      <nav class="side-nav">
+        <a
+          class="side-link active"
+          href="/receptor"
+          aria-current="page"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect
+              x="3"
+              y="4"
+              width="18"
+              height="13"
+              rx="3"
+            />
+            <path d="M8 21h8M12 17v4"/>
+          </svg>
+
+          Ver transmisión
+        </a>
+
+        <a class="side-link" href="#guia">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect
+              x="5"
+              y="3"
+              width="14"
+              height="18"
+              rx="2"
+            />
+            <path d="M9 8h6M9 12h6M9 16h4"/>
+          </svg>
+
+          Guía rápida
+        </a>
+      </nav>
+
+      <div class="sidebar-card">
+        <span class="eyebrow">MEJOR EN COMPAÑÍA</span>
+
+        <h3>
+          Tu lugar en<br>
+          primera fila.
+        </h3>
+
+        <p>
+          Conéctate, activa el sonido
+          y comparte el momento.
+        </p>
+
+        <a href="#connectionPanel">
+          Entrar al directo ↓
+        </a>
+      </div>
+    </aside>
+
+    <main class="content" id="contenido">
+      <!-- TÍTULO -->
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">
+            BIENVENIDO AL CANAL
+          </span>
+
+          <h1>
+            Un directo.
+            <span>Tu comunidad.</span>
+          </h1>
+
+          <p>
+            Las mejores cosas pasan cuando estamos conectados.
+          </p>
+        </div>
+
+        <div class="live-badge" id="liveBadge">
+          <i aria-hidden="true"></i>
+          <span id="liveLabel">SIN CONEXIÓN</span>
+        </div>
+      </div>
+
+      <div class="main-grid">
+        <!-- VIDEO -->
+        <section
+          class="stream-column"
+          aria-label="Reproductor del canal"
+        >
+          <div class="player" id="player">
+            <span class="player-tag">
+              PULSE / CANAL PRINCIPAL
+            </span>
+
+            <video
+              id="remoteVideo"
+              autoplay
+              playsinline
+              controls
+              aria-label="Video de la transmisión"
+            ></video>
+
+            <div class="player-placeholder">
+              <div class="signal-box" aria-hidden="true">
+                <div class="signal-bars">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+              </div>
+
+              <h2>
+                El directo te está esperando.
+              </h2>
+
+              <p>
+                Pulsa Conectar al directo para entrar
+                al canal del emisor.
+              </p>
+
+              <span class="placeholder-caption">
+                EL MISMO DIRECTO. EL MISMO MOMENTO.
+              </span>
+            </div>
+          </div>
+
+          <!-- INFORMACIÓN DEL CANAL -->
+          <div class="channel-row">
+            <div
+              class="channel-avatar"
+              aria-hidden="true"
+            >
+              P
+            </div>
+
+            <div class="channel-info">
+              <h2>Canal principal</h2>
+              <p>Audio y video en directo</p>
+
+              <div class="tags">
+                <span class="tag">En español</span>
+                <span class="tag">Comunidad</span>
+              </div>
+            </div>
+
+            <button
+              class="button button-secondary share-button"
+              id="shareBtn"
+              type="button"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path d="M12 16V3m-5 5 5-5 5 5"/>
+
+                <path
+                  d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"
+                />
+              </svg>
+
+              Compartir canal
+            </button>
+          </div>
+
+          <!-- GUÍA DEL RECEPTOR -->
+          <section class="panel guide" id="guia">
+            <span class="eyebrow">
+              SIÉNTETE PARTE DEL MOMENTO
+            </span>
+
+            <h2>Tu entrada al directo.</h2>
+
+            <ol class="steps">
+              <li>
+                <span class="step-number">01</span>
+
+                <h3>Conéctate al canal</h3>
+
+                <p>
+                  El emisor debe iniciar su transmisión
+                  antes de que puedas entrar.
+                </p>
+              </li>
+
+              <li>
+                <span class="step-number">02</span>
+
+                <h3>Activa el sonido</h3>
+
+                <p>
+                  Usa los controles del video para
+                  ajustar el volumen o ampliar la pantalla.
+                </p>
+              </li>
+
+              <li>
+                <span class="step-number">03</span>
+
+                <h3>Disfruta el directo</h3>
+
+                <p>
+                  Cuando termines, pulsa Desconectar
+                  para liberar tu lugar.
+                </p>
+              </li>
+            </ol>
+          </section>
+        </section>
+
+        <!-- CONTROLES DEL RECEPTOR -->
+        <aside
+          class="right-column"
+          aria-label="Acceso al directo"
+        >
+          <section class="panel" id="connectionPanel">
+            <div class="panel-heading">
+              <h2>Entra al directo</h2>
+
+              <span
+                class="purple-mark"
+                aria-hidden="true"
+              >
+                ◉
+              </span>
+            </div>
+
+            <p class="panel-description">
+              Un clic para estar ahí.
+              Conéctate y disfruta la transmisión.
+            </p>
+
+            <div class="session-time">
+              <span>Tiempo conectado</span>
+              <strong id="liveClock">00:00:00</strong>
+            </div>
+
+            <div class="controls">
+              <button
+                id="connectBtn"
+                class="button button-primary"
+                type="button"
+              >
+                <span aria-hidden="true">▶</span>
+                Conectar al directo
+              </button>
+
+              <button
+                id="disconnectBtn"
+                class="button button-secondary button-stop"
+                type="button"
+                disabled
+              >
+                <span aria-hidden="true">■</span>
+                Desconectar
+              </button>
+            </div>
+
+            <div class="status-box">
+              <span class="status-label">
+                ESTADO DE CONEXIÓN
+              </span>
+
+              <p
+                id="status"
+                role="status"
+                aria-live="polite"
+              >
+                Sin conexión.
+              </p>
+            </div>
+          </section>
+
+          <!-- INFORMACIÓN DE CONEXIÓN -->
+          <section class="panel connection-card">
+            <span class="eyebrow">
+              UN DIRECTO MÁS CERCANO
+            </span>
+
+            <div class="capacity">
+              <strong>4</strong>
+
+              <span>
+                espectadores<br>
+                como máximo
+              </span>
+            </div>
+
+            <p class="panel-description">
+              Un solo emisor comparte su cámara
+              y su audio con todos los receptores.
+            </p>
+
+            <div
+              class="connection-state"
+              id="connectionState"
+            >
+              <i aria-hidden="true"></i>
+
+              <span id="connectionValue">
+                Sin conectar
+              </span>
+            </div>
+
+            <p
+              class="panel-footnote"
+              id="connectionDetail"
+            >
+              Tu lugar se solicita al pulsar
+              Conectar al directo.
+            </p>
+
+            <details class="help">
+              <summary>
+                ¿No escuchas el audio?
+              </summary>
+
+              <p>
+                Revisa el volumen del reproductor y de tu equipo.
+                Si el video no comienza automáticamente,
+                pulsa reproducir en sus controles.
+              </p>
+            </details>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="page-footer">
+        <strong>PULSE LIVE</strong>
+
+        <span>
+          Pequeñas audiencias. Grandes momentos.
+        </span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- AVISO AL COPIAR EL ENLACE -->
+  <div
+    class="toast"
+    id="shareNotice"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    Enlace del canal copiado.
+  </div>
+
+  <!-- FIREBASE Y LÓGICA ACTUAL DEL RECEPTOR -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <script src="/firebase-config.js"></script>
   <script src="/receptor/receptor.js"></script>
+
+  <!-- ACTUALIZACIÓN VISUAL -->
+  <script>
+    (() => {
+      const playerElement = document.getElementById('player');
+
+      const videoElement = document.getElementById(
+        'remoteVideo'
+      );
+
+      const connectButton = document.getElementById(
+        'connectBtn'
+      );
+
+      const disconnectButton = document.getElementById(
+        'disconnectBtn'
+      );
+
+      const badgeElement = document.getElementById(
+        'liveBadge'
+      );
+
+      const labelElement = document.getElementById(
+        'liveLabel'
+      );
+
+      const clockElement = document.getElementById(
+        'liveClock'
+      );
+
+      const stateElement = document.getElementById(
+        'connectionState'
+      );
+
+      const valueElement = document.getElementById(
+        'connectionValue'
+      );
+
+      const detailElement = document.getElementById(
+        'connectionDetail'
+      );
+
+      let connectedAt = null;
+      let noticeTimer = null;
+
+      function formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+
+        const minutes = Math.floor(
+          (seconds % 3600) / 60
+        );
+
+        const remainingSeconds = seconds % 60;
+
+        return [hours, minutes, remainingSeconds]
+          .map(value => String(value).padStart(2, '0'))
+          .join(':');
+      }
+
+      function updateInterface() {
+        // Conexión creada por receptor.js.
+        const connection = typeof pc !== 'undefined'
+          ? pc
+          : null;
+
+        const connected = Boolean(
+          connection &&
+          connection.connectionState === 'connected'
+        );
+
+        const interrupted = Boolean(
+          connection &&
+          connection.connectionState === 'disconnected'
+        );
+
+        const waiting = (
+          connectButton.disabled &&
+          !connected
+        );
+
+        const stream = videoElement.srcObject;
+
+        const hasVideo = Boolean(
+          stream &&
+          stream.getVideoTracks().some(
+            track => track.readyState === 'live'
+          )
+        );
+
+        playerElement.classList.toggle(
+          'has-video',
+          hasVideo
+        );
+
+        badgeElement.classList.toggle(
+          'is-live',
+          connected
+        );
+
+        stateElement.classList.toggle(
+          'connected',
+          connected
+        );
+
+        if (connected) {
+          labelElement.textContent = 'EN VIVO';
+
+          valueElement.textContent =
+            'Conectado al emisor';
+
+          detailElement.textContent =
+            'Tu conexión con el emisor está activa.';
+        } else if (interrupted) {
+          labelElement.textContent =
+            'CONEXIÓN INTERRUMPIDA';
+
+          valueElement.textContent =
+            'Conexión interrumpida';
+
+          detailElement.textContent =
+            'Esperando a que se restablezca la conexión.';
+        } else if (waiting) {
+          labelElement.textContent = 'CONECTANDO';
+
+          valueElement.textContent =
+            'Conectando al canal...';
+
+          detailElement.textContent =
+            'Estamos estableciendo tu conexión con el emisor.';
+        } else {
+          labelElement.textContent = 'SIN CONEXIÓN';
+
+          valueElement.textContent = 'Sin conectar';
+
+          detailElement.textContent =
+            'Tu lugar se solicita al pulsar Conectar al directo.';
+        }
+
+        if (connected && connectedAt === null) {
+          connectedAt = Date.now();
+        }
+
+        if (!connection) {
+          connectedAt = null;
+        }
+
+        const seconds = connectedAt === null
+          ? 0
+          : Math.floor(
+              (Date.now() - connectedAt) / 1000
+            );
+
+        clockElement.textContent = formatTime(seconds);
+      }
+
+      const observer = new MutationObserver(
+        updateInterface
+      );
+
+      observer.observe(
+        document.getElementById('status'),
+        {
+          childList: true,
+          subtree: true,
+          characterData: true
+        }
+      );
+
+      observer.observe(connectButton, {
+        attributes: true,
+        attributeFilter: ['disabled']
+      });
+
+      observer.observe(disconnectButton, {
+        attributes: true,
+        attributeFilter: ['disabled']
+      });
+
+      videoElement.addEventListener(
+        'loadedmetadata',
+        updateInterface
+      );
+
+      videoElement.addEventListener(
+        'emptied',
+        updateInterface
+      );
+
+      document.getElementById('shareBtn').addEventListener(
+        'click',
+        async () => {
+          const channelUrl = new URL(
+            '/receptor',
+            window.location.origin
+          ).href;
+
+          try {
+            await navigator.clipboard.writeText(
+              channelUrl
+            );
+
+            const notice = document.getElementById(
+              'shareNotice'
+            );
+
+            notice.hidden = false;
+
+            clearTimeout(noticeTimer);
+
+            noticeTimer = setTimeout(() => {
+              notice.hidden = true;
+            }, 3000);
+          } catch {
+            window.prompt(
+              'Copia el enlace del canal:',
+              channelUrl
+            );
+          }
+        }
+      );
+
+      updateInterface();
+
+      setInterval(updateInterface, 1000);
+    })();
+  </script>
+  <script src="/chat.js?v=1" data-role="receptor"></script>
+  <script src="/reacciones.js?v=1" data-role="receptor"></script>
 </body>
 </html>
